@@ -1,4 +1,3 @@
-import { IsEmail } from 'class-validator';
 import {
   BadRequestException,
   Injectable,
@@ -11,9 +10,9 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './entities/auth.entity';
+import { User } from './entities/user.entity';
 import { LoginUserDto } from './dto/login-user.dto';
-//import * as bcrypt from 'bcrypt'; error instalacion module bcrypt
+import * as bcrypt from 'bcryptjs';
 import * as argon2 from 'argon2';
 import { JwtPayload } from './interfaces/jwt-payload.interfaces';
 
@@ -29,12 +28,11 @@ export class AuthService {
     try {
       const { password, ...userData } = createUserDto;
 
-      //const password2 = await this.hashPassword(password);
-      //console.log("password2", password2);
+      const passwordHash = bcrypt.hashSync(password, 10);
 
       const user = this.userRepository.create({
         ...userData,
-        password: password,
+        password: passwordHash,
       });
 
       //delete user.password;
@@ -43,7 +41,7 @@ export class AuthService {
       //TODO RETORNAR JWT DE USUARIO
       return {
         ...user,
-        token: this.getJwtToken({ email: user.email }),
+        token: this.getJwtToken({ id: user.id }),
       };
     } catch (error) {
       this.handleDBErrors(error);
@@ -72,24 +70,34 @@ export class AuthService {
 
       const user = await this.userRepository.findOne({
         where: { email },
-        select: { email: true, password: true },
+        select: { email: true, password: true, id: true },
       });
 
       if (!user) {
         throw new UnauthorizedException('credentials are not valid');
       }
 
-      if (!argon2.verify(password, user.password)) {
-        throw new UnauthorizedException('credentials are not valid');
-      }
+      // if (!argon2.verify(password, user.password)) {
+      //   throw new UnauthorizedException('credentials are not valid');
+      // }
+
+      if (!bcrypt.compareSync(password, user.password))
+        throw new UnauthorizedException('Credentials are not valid (password)');
 
       return {
         ...user,
-        token: this.getJwtToken({ email: user.email }),
+        token: this.getJwtToken({ id: user.id }),
       };
     } catch (error) {
       this.handleDBErrors(error);
     }
+  }
+
+  async checAuthStatus(user: User) {
+    return {
+      ...user,
+      token: this.getJwtToken({ id: user.id }),
+    };
   }
 
   private getJwtToken(payload: JwtPayload) {
@@ -101,8 +109,6 @@ export class AuthService {
     if (error.code === '23505') {
       throw new BadRequestException(error.detail);
     }
-
-    console.log(error);
 
     throw new InternalServerErrorException('Please check server logs');
   }

@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './entities/auth.entity';
+import { User } from './entities/user.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -22,8 +22,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        console.log('JWT Secret', configService.get('JWT_SECRET'));
-        console.log('JWT SECRET', process.env.JWT_SECRET);
+        // console.log('JWT Secret', configService.get('JWT_SECRET'));
+        // console.log('JWT SECRET', process.env.JWT_SECRET);
         return {
           secret: configService.get('JWT_SECRET'),
           signOptions: {
@@ -40,6 +40,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     //   },
     // }),
   ],
-  exports: [TypeOrmModule, JwtStrategy],
+  exports: [TypeOrmModule, JwtStrategy, PassportModule, JwtModule],
 })
 export class AuthModule {}
